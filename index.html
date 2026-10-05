@@ -144,7 +144,10 @@ svg { flex-shrink: 0; }
 }
 .pill.up { background: var(--up-bg); color: var(--up); }
 .pill.down { background: var(--down-bg); color: var(--down); }
-.pill small { font-weight: 400; opacity: 0.85; font-size: 11px; }
+.pill { white-space: nowrap; }
+.pill.wait { white-space: normal; }
+.chg { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
+.ago { font-size: 12px; color: var(--muted); white-space: nowrap; }
 
 /* chart */
 .chart-box { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
@@ -183,6 +186,7 @@ td.d.up { color: var(--up); }
 td.d.down { color: var(--down); }
 td.d.flat { color: var(--muted); font-weight: 400; }
 
+.periods { margin-bottom: 16px; --pc: var(--brand); }
 .note { color: var(--muted); font-size: 14px; padding: 8px 0; }
 .empty { text-align: center; padding: 64px 16px; color: var(--ink-2); }
 .empty b { display: block; font-size: 20px; color: var(--ink); margin-bottom: 6px; }
@@ -225,7 +229,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; padding: 8px 
       <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18M18 17V9M13 17V5M8 17v-3"/></svg>סקירה כללית
     </button>
     <button role="tab" id="tab-daily" aria-selected="false" aria-controls="view">
-      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>שינוי יומי
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>שינויים
     </button>
   </div>
   <main id="view" role="tabpanel" aria-live="polite"></main>
@@ -322,7 +326,9 @@ function pill(cur, prev, neutral, withLabel) {
   const d = cur - prev;
   if (d === 0) return '<span class="pill">ללא שינוי</span>';
   const cls = neutral ? '' : d > 0 ? 'up' : 'down';
-  return `<span class="pill ${cls}" dir="rtl"><span aria-hidden="true">${d > 0 ? '▲' : '▼'}</span>${d > 0 ? '+' : '−'}${fmt(Math.abs(d))}${withLabel ? ' <small>מאתמול</small>' : ''}</span>`;
+  const lbl = withLabel === true ? 'מאתמול' : withLabel;
+  const badge = `<span class="pill ${cls}" dir="rtl"><span aria-hidden="true">${d > 0 ? '▲' : '▼'}</span>${d > 0 ? '+' : '−'}${fmt(Math.abs(d))}</span>`;
+  return lbl ? `<div class="chg">${badge}<span class="ago">${lbl}</span></div>` : badge;
 }
 
 function availableMetrics(p) {
@@ -361,34 +367,90 @@ function overviewCard(p) {
     </div></section>`;
 }
 
+const PERIODS = {
+  day: { days: 1, label: 'יומי', ago: 'מאתמול', cmp: 'מול אתמול', unit: 'תאריך' },
+  week: { days: 7, label: 'שבועי', ago: 'משבוע שעבר', cmp: 'מול לפני שבוע', unit: 'שבוע' },
+  month: { days: 30, label: 'חודשי', ago: 'מחודש שעבר', cmp: 'מול לפני 30 יום', unit: 'חודש' },
+  year: { days: 365, label: 'שנתי', ago: 'משנה שעברה', cmp: 'מול לפני שנה', unit: 'שנה' },
+};
+let period = 'day';
+const DAY = 86400000;
+const dayNum = (d) => Math.round(Date.parse(d) / DAY);
+const daysText = (n) => (n === 1 ? 'יום אחד' : n + ' ימים');
+
+// Latest record that is at least `days` days older than `cur` (null when the history is too short).
+function baselineRow(rows, cur, days) {
+  const target = dayNum(cur.date) - days;
+  let found = null;
+  for (const r of rows) if (dayNum(r.date) <= target) found = r;
+  return found;
+}
+
+// Calendar bucket of a date: day, week (starts Sunday, as in Israel), month or year.
+function bucketKey(d, per) {
+  if (per === 'week') return new Date((dayNum(d) - new Date(d + 'T00:00:00Z').getUTCDay()) * DAY).toISOString().slice(0, 10);
+  if (per === 'month') return d.slice(0, 7);
+  if (per === 'year') return d.slice(0, 4);
+  return d;
+}
+function bucketLabel(key, per) {
+  if (per === 'week') return 'שבוע מ-' + shortDate(key);
+  if (per === 'month') return key.slice(5) + '/' + key.slice(0, 4);
+  if (per === 'year') return key;
+  return longDate(key);
+}
+
 function dailyCard(p) {
   const metrics = availableMetrics(p);
   const rows = history.filter((r) => r[p.id]);
   const style = `style="--pc:${p.color}"`;
-  if (rows.length < 2) {
-    return `<section class="panel" ${style}>${panelHead(p)}<div class="note">${rows.length ? 'יש נתונים של יום אחד בלבד. השינוי היומי יוצג מהיום השני.' : 'עדיין אין נתונים לפלטפורמה הזו.'}</div></section>`;
+  if (!rows.length) {
+    return `<section class="panel" ${style}>${panelHead(p)}<div class="note">עדיין אין נתונים לפלטפורמה הזו.</div></section>`;
   }
-  const { cur, prev } = lastTwo(p.id);
+  const P = PERIODS[period];
+  const cur = rows[rows.length - 1];
+  const base = baselineRow(rows, cur, P.days);
+  const missing = P.days - (dayNum(cur.date) - dayNum(rows[0].date));
+  const waiting = `<span class="pill wait">יוצג אחרי עוד ${daysText(missing)}</span>`;
   const tiles = metrics.map(([k, label, ic]) => `
     <div class="tile"><div class="label">${icon(ic)}${label}</div><div class="value num">${fmt(cur[p.id][k])}</div>
-    ${pill(cur[p.id][k], prev[p.id][k], p.neutral.includes(k), true)}</div>`).join('');
-  const heads = metrics.map(([, label]) => `<th>${label}</th>`).join('');
-  const body = rows.slice(1).reverse().map((r) => {
-    const before = rows[rows.indexOf(r) - 1];
-    const cells = metrics.map(([k]) => {
-      const a = r[p.id][k], b = before[p.id][k];
-      if (typeof a !== 'number' || typeof b !== 'number') return '<td class="d flat num">–</td>';
-      const d = a - b;
-      if (d === 0) return '<td class="d flat num">0</td>';
-      const cls = p.neutral.includes(k) ? 'flat' : d > 0 ? 'up' : 'down';
-      return `<td class="d ${cls} num">${d > 0 ? '+' : '−'}${fmt(Math.abs(d))}</td>`;
-    }).join('');
-    return `<tr><td>${longDate(r.date)}</td>${cells}</tr>`;
-  }).join('');
+    ${base ? pill(cur[p.id][k], base[p.id][k], p.neutral.includes(k), P.ago) : waiting}</div>`).join('');
+  const sub = base
+    ? `השוואה: ${longDate(cur.date)} מול ${longDate(base.date)}`
+    : `השינוי ה${P.label} יוצג אחרי ${P.days + 1} ימים של נתונים. יש כרגע ${daysText(dayNum(cur.date) - dayNum(rows[0].date) + 1)}.`;
+
+  const buckets = [];
+  for (const r of rows) {
+    const key = bucketKey(r.date, period);
+    if (buckets.length && buckets[buckets.length - 1].key === key) buckets[buckets.length - 1].row = r;
+    else buckets.push({ key, row: r });
+  }
+  let table;
+  if (buckets.length < 2) {
+    table = `<div class="note">אין עדיין תקופה להשוואה. הטבלה תתמלא כשתהיה לפחות תקופה אחת שהסתיימה.</div>`;
+  } else {
+    const heads = metrics.map(([, label]) => `<th>${label}</th>`).join('');
+    const body = buckets.slice(1).map((bk, i) => {
+      const before = buckets[i].row;
+      const cells = metrics.map(([k]) => {
+        const a = bk.row[p.id][k], b = before[p.id][k];
+        if (typeof a !== 'number' || typeof b !== 'number') return '<td class="d flat num">–</td>';
+        const d = a - b;
+        if (d === 0) return '<td class="d flat num">0</td>';
+        const cls = p.neutral.includes(k) ? 'flat' : d > 0 ? 'up' : 'down';
+        return `<td class="d ${cls} num">${d > 0 ? '+' : '−'}${fmt(Math.abs(d))}</td>`;
+      }).join('');
+      const open = period !== 'day' && i === buckets.length - 2 ? ' (עד היום)' : '';
+      return `<tr><td>${bucketLabel(bk.key, period)}${open}</td>${cells}</tr>`;
+    }).reverse();
+    const shown = body.slice(0, 60).join('');
+    const more = body.length > 60 ? `<p class="sub" style="margin:8px 0 0">מוצגות ${P.unit === 'תאריך' ? '60 הימים' : '60 התקופות'} האחרונים.</p>` : '';
+    table = `<div class="table-wrap"><table><thead><tr><th>${P.unit}</th>${heads}</tr></thead><tbody>${shown}</tbody></table></div>${more}`;
+  }
   return `<section class="panel" ${style}>${panelHead(p)}
-    <p class="sub">היום (${longDate(cur.date)}) מול ${longDate(prev.date)}</p>
+    <p class="sub">${sub}</p>
     <div class="grid">${tiles}</div>
-    <div class="table-wrap"><table><thead><tr><th>תאריך</th>${heads}</tr></thead><tbody>${body}</tbody></table></div>
+    ${table}
   </section>`;
 }
 
@@ -478,7 +540,11 @@ function render() {
     view.innerHTML = '<div class="empty"><b>עדיין אין נתונים</b>הדשבורד יתמלא אחרי הריצה היומית הראשונה.</div>';
     return;
   }
-  view.innerHTML = PLATFORMS.map(tab === 'overview' ? overviewCard : dailyCard).join('');
+  const selector = tab === 'daily'
+    ? `<div class="chips periods" role="group" aria-label="תקופת השוואה">${Object.entries(PERIODS).map(([k, v]) => `<button class="chip" type="button" data-period="${k}" aria-pressed="${k === period}">${v.label}</button>`).join('')}</div>`
+    : '';
+  view.innerHTML = selector + PLATFORMS.map(tab === 'overview' ? overviewCard : dailyCard).join('');
+  view.querySelectorAll('button[data-period]').forEach((b) => b.addEventListener('click', () => { period = b.dataset.period; render(); }));
   if (tab === 'overview') {
     PLATFORMS.forEach(drawChart);
     view.querySelectorAll('button[data-chip]').forEach((b) => b.addEventListener('click', () => {
