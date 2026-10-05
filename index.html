@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>דשבורד רשתות חברתיות</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #6f6d67;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.10);
+  --c-tiktok: #2a78d6;
+  --c-facebook: #eb6834;
+  --up: #006300;
+  --down: #d03b3b;
+  --tab-on: #0b0b0b;
+  --tab-on-ink: #fcfcfb;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --muted: #a09e96;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255, 255, 255, 0.10);
+    --c-tiktok: #3987e5;
+    --c-facebook: #d95926;
+    --up: #0ca30c;
+    --down: #e66767;
+    --tab-on: #ffffff;
+    --tab-on-ink: #1a1a19;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  line-height: 1.4;
+}
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; margin-bottom: 16px; }
+h1 { margin: 0; font-size: 22px; font-weight: 650; }
+.updated { color: var(--muted); font-size: 13px; }
+.tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+.tabs button {
+  font: inherit; font-size: 14px; cursor: pointer;
+  padding: 8px 16px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--ink-2);
+}
+.tabs button[aria-selected="true"] { background: var(--tab-on); color: var(--tab-on-ink); border-color: var(--tab-on); }
+.tabs button:focus-visible, select:focus-visible { outline: 2px solid var(--c-tiktok); outline-offset: 2px; }
+.card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  padding: 16px; margin-bottom: 16px;
+}
+.card h2 { margin: 0; font-size: 17px; font-weight: 650; display: flex; align-items: center; gap: 8px; }
+.card .handle { color: var(--muted); font-size: 13px; font-weight: 400; direction: ltr; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.card-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
+.asof { color: var(--muted); font-size: 12px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 10px; }
+.tile { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+.tile .label { color: var(--ink-2); font-size: 12px; }
+.tile .value { font-size: 24px; font-weight: 650; margin-top: 2px; }
+.delta { font-size: 12px; margin-top: 2px; min-height: 17px; color: var(--muted); }
+.delta.up { color: var(--up); }
+.delta.down { color: var(--down); }
+.chart-box { margin-top: 16px; }
+.chart-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; font-size: 13px; color: var(--ink-2); }
+select {
+  font: inherit; font-size: 13px; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--border); border-radius: 8px; padding: 4px 8px;
+}
+.chart { position: relative; direction: ltr; touch-action: pan-y; }
+.chart svg { display: block; width: 100%; height: auto; }
+.tip {
+  position: absolute; pointer-events: none; z-index: 2;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--border);
+  border-radius: 8px; padding: 6px 10px; font-size: 12px; white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18); direction: rtl; display: none;
+}
+.tip b { font-size: 14px; }
+.note { color: var(--muted); font-size: 13px; padding: 14px 0 2px; }
+.table-wrap { overflow-x: auto; margin-top: 14px; border: 1px solid var(--border); border-radius: 10px; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { padding: 8px 12px; text-align: start; white-space: nowrap; border-bottom: 1px solid var(--grid); }
+th { color: var(--ink-2); font-weight: 600; background: var(--page); }
+tr:last-child td { border-bottom: 0; }
+td.n { font-variant-numeric: tabular-nums; }
+.empty { text-align: center; padding: 48px 16px; color: var(--ink-2); }
+.empty b { display: block; font-size: 18px; color: var(--ink); margin-bottom: 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>דשבורד רשתות חברתיות</h1>
+    <div class="updated" id="updated"></div>
+  </header>
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tab-overview" aria-selected="true" aria-controls="view">סקירה כללית</button>
+    <button role="tab" id="tab-daily" aria-selected="false" aria-controls="view">שינוי יומי</button>
+  </div>
+  <main id="view" role="tabpanel"></main>
+</div>
+
+<script>
+const REMOTE = 'https://raw.githubusercontent.com/dekel2019-boop/social-dashboard/main/data/history.json';
+
+const PLATFORMS = [
+  {
+    id: 'tiktok', name: 'טיקטוק', handle: '@tiny_hamlazot', color: 'var(--c-tiktok)',
+    metrics: [
+      ['followers', 'עוקבים'], ['following', 'נעקבים'], ['likes', 'לייקים'], ['videos', 'סרטונים'],
+      ['views', 'צפיות (בסרטונים האחרונים)'], ['comments', 'תגובות'], ['shares', 'שיתופים'], ['saves', 'שמירות'],
+    ],
+    neutral: ['following'],
+  },
+  {
+    id: 'facebook', name: 'פייסבוק', handle: '', color: 'var(--c-facebook)',
+    metrics: [
+      ['followers', 'עוקבים'], ['fans', 'לייקים לעמוד'], ['reach', 'חשיפה (יום)'], ['views', 'צפיות (יום)'],
+      ['engagement', 'אינטראקציות (יום)'], ['posts', 'פוסטים אחרונים'], ['post_reactions', 'ריאקשנים בפוסטים'],
+      ['post_comments', 'תגובות בפוסטים'], ['post_shares', 'שיתופים בפוסטים'],
+    ],
+    neutral: [],
+  },
+];
+
+const nf = new Intl.NumberFormat('he-IL');
+const cf = new Intl.NumberFormat('he-IL', { notation: 'compact', maximumFractionDigits: 1 });
+const fmt = (n) => nf.format(n);
+const shortDate = (d) => d.slice(8, 10) + '/' + d.slice(5, 7);
+const longDate = (d) => d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4);
+
+let history = [];
+let tab = 'overview';
+const chartMetric = {};
+
+async function load() {
+  for (const url of [REMOTE, 'data/history.json']) {
+    try {
+      const res = await fetch(url + '?t=' + Date.now(), { cache: 'no-store' });
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (Array.isArray(data)) return data;
+    } catch (e) { /* try next source */ }
+  }
+  return [];
+}
+
+function series(pid, key) {
+  return history
+    .filter((r) => r[pid] && typeof r[pid][key] === 'number')
+    .map((r) => ({ d: r.date, v: r[pid][key] }));
+}
+
+function lastTwo(pid) {
+  const rows = history.filter((r) => r[pid]);
+  return { cur: rows[rows.length - 1], prev: rows[rows.length - 2] };
+}
+
+function deltaHtml(cur, prev, neutral) {
+  if (prev === undefined || cur === undefined) return '<div class="delta">&nbsp;</div>';
+  const d = cur - prev;
+  if (d === 0) return '<div class="delta">ללא שינוי</div>';
+  const cls = neutral ? '' : d > 0 ? 'up' : 'down';
+  const arrow = d > 0 ? '▲' : '▼';
+  const sign = d > 0 ? '+' : '−';
+  return `<div class="delta ${cls}" dir="rtl">${arrow} ${sign}${fmt(Math.abs(d))} מאתמול</div>`;
+}
+
+function availableMetrics(p) {
+  const latest = history.filter((r) => r[p.id]).pop();
+  if (!latest) return [];
+  return p.metrics.filter(([k]) => typeof latest[p.id][k] === 'number');
+}
+
+function overviewCard(p) {
+  const metrics = availableMetrics(p);
+  const { cur, prev } = lastTwo(p.id);
+  const head = `<div class="card-head"><h2><span class="dot" style="background:${p.color}"></span>${p.name} <span class="handle">${p.handle}</span></h2>${cur ? `<span class="asof">נכון ל-${longDate(cur.date)}</span>` : ''}</div>`;
+  if (!cur) {
+    return `<section class="card">${head}<div class="note">עדיין אין נתונים לפלטפורמה הזו. הם יופיעו אחרי הריצה הראשונה.</div></section>`;
+  }
+  const tiles = metrics.map(([k, label]) => `
+    <div class="tile"><div class="label">${label}</div><div class="value">${fmt(cur[p.id][k])}</div>
+    ${deltaHtml(cur[p.id][k], prev ? prev[p.id][k] : undefined, p.neutral.includes(k))}</div>`).join('');
+  const sel = chartMetric[p.id] && metrics.some(([k]) => k === chartMetric[p.id]) ? chartMetric[p.id] : metrics[0][0];
+  chartMetric[p.id] = sel;
+  const options = metrics.map(([k, label]) => `<option value="${k}"${k === sel ? ' selected' : ''}>${label}</option>`).join('');
+  return `<section class="card" data-p="${p.id}">${head}
+    <div class="tiles">${tiles}</div>
+    <div class="chart-box">
+      <div class="chart-head"><span>מגמה לאורך זמן</span><select aria-label="בחירת נתון לגרף" data-select="${p.id}">${options}</select></div>
+      <div class="chart" id="chart-${p.id}"></div>
+    </div></section>`;
+}
+
+function dailyCard(p) {
+  const metrics = availableMetrics(p);
+  const rows = history.filter((r) => r[p.id]);
+  const head = `<div class="card-head"><h2><span class="dot" style="background:${p.color}"></span>${p.name} <span class="handle">${p.handle}</span></h2></div>`;
+  if (rows.length < 2) {
+    return `<section class="card">${head}<div class="note">${rows.length ? 'יש נתונים של יום אחד בלבד. השינוי היומי יוצג מהיום השני.' : 'עדיין אין נתונים לפלטפורמה הזו.'}</div></section>`;
+  }
+  const { cur, prev } = lastTwo(p.id);
+  const tiles = metrics.map(([k, label]) => `
+    <div class="tile"><div class="label">${label}</div><div class="value">${fmt(cur[p.id][k])}</div>
+    ${deltaHtml(cur[p.id][k], prev[p.id][k], p.neutral.includes(k))}</div>`).join('');
+  const heads = metrics.map(([, label]) => `<th>${label}</th>`).join('');
+  const body = rows.slice(1).reverse().map((r) => {
+    const before = rows[rows.indexOf(r) - 1];
+    const cells = metrics.map(([k]) => {
+      const a = r[p.id][k], b = before[p.id][k];
+      if (typeof a !== 'number' || typeof b !== 'number') return '<td class="n">–</td>';
+      const d = a - b;
+      if (d === 0) return '<td class="n">0</td>';
+      const cls = p.neutral.includes(k) ? '' : d > 0 ? 'up' : 'down';
+      const style = cls ? `style="color:var(--${cls === 'up' ? 'up' : 'down'})"` : '';
+      return `<td class="n" ${style} dir="ltr">${d > 0 ? '+' : '−'}${fmt(Math.abs(d))}</td>`;
+    }).join('');
+    return `<tr><td>${longDate(r.date)}</td>${cells}</tr>`;
+  }).join('');
+  return `<section class="card">${head}
+    <div class="asof" style="margin-bottom:10px">היום (${longDate(cur.date)}) מול ${longDate(prev.date)}</div>
+    <div class="tiles">${tiles}</div>
+    <div class="table-wrap"><table><thead><tr><th>תאריך</th>${heads}</tr></thead><tbody>${body}</tbody></table></div>
+  </section>`;
+}
+
+function drawChart(p) {
+  const el = document.getElementById('chart-' + p.id);
+  if (!el) return;
+  const key = chartMetric[p.id];
+  const label = (p.metrics.find(([k]) => k === key) || [, key])[1];
+  const pts = series(p.id, key);
+  if (pts.length < 2) {
+    el.innerHTML = '<div class="note" style="direction:rtl">הגרף יופיע אחרי שיהיו נתונים משני ימים לפחות.</div>';
+    return;
+  }
+  const W = 640, H = 220, L = 52, R = 14, T = 14, B = 28;
+  let lo = Math.min(...pts.map((x) => x.v)), hi = Math.max(...pts.map((x) => x.v));
+  if (lo === hi) { lo -= 1; hi += 1; }
+  const pad = (hi - lo) * 0.12; lo -= pad; hi += pad;
+  const t0 = Date.parse(pts[0].d), t1 = Date.parse(pts[pts.length - 1].d);
+  const X = (d) => L + ((Date.parse(d) - t0) / (t1 - t0 || 1)) * (W - L - R);
+  const Y = (v) => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+  const ticks = [0, 1, 2].map((i) => lo + ((hi - lo) * i) / 2);
+  const grid = ticks.map((v) => `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid)" stroke-width="1"/>
+    <text x="${L - 8}" y="${Y(v) + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${cf.format(Math.round(v))}</text>`).join('');
+  const mid = pts[Math.floor(pts.length / 2)];
+  const xl = [pts[0], mid, pts[pts.length - 1]].filter((x, i, a) => a.findIndex((y) => y.d === x.d) === i)
+    .map((x, i, a) => `<text x="${X(x.d)}" y="${H - 8}" text-anchor="${i === 0 ? 'start' : i === a.length - 1 ? 'end' : 'middle'}" font-size="11" fill="var(--muted)">${shortDate(x.d)}</text>`).join('');
+  const line = pts.map((x, i) => (i ? 'L' : 'M') + X(x.d).toFixed(1) + ' ' + Y(x.v).toFixed(1)).join(' ');
+  const last = pts[pts.length - 1];
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="גרף ${label} לאורך זמן">
+    ${grid}<line x1="${L}" x2="${W - R}" y1="${H - B}" y2="${H - B}" stroke="var(--axis)"/>${xl}
+    <path d="${line}" fill="none" stroke="${p.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${X(last.d)}" cy="${Y(last.v)}" r="4" fill="${p.color}" stroke="var(--surface)" stroke-width="2"/>
+    <line class="xh" y1="${T}" y2="${H - B}" stroke="var(--axis)" stroke-width="1" style="display:none"/>
+    <circle class="dh" r="5" fill="${p.color}" stroke="var(--surface)" stroke-width="2" style="display:none"/>
+  </svg><div class="tip"></div>`;
+  const svg = el.querySelector('svg'), tip = el.querySelector('.tip');
+  const xh = svg.querySelector('.xh'), dh = svg.querySelector('.dh');
+  const move = (ev) => {
+    const r = svg.getBoundingClientRect();
+    const vx = ((ev.clientX - r.left) / r.width) * W;
+    let best = pts[0];
+    for (const x of pts) if (Math.abs(X(x.d) - vx) < Math.abs(X(best.d) - vx)) best = x;
+    xh.setAttribute('x1', X(best.d)); xh.setAttribute('x2', X(best.d)); xh.style.display = '';
+    dh.setAttribute('cx', X(best.d)); dh.setAttribute('cy', Y(best.v)); dh.style.display = '';
+    tip.innerHTML = `${longDate(best.d)}<br><b>${fmt(best.v)}</b> ${label}`;
+    tip.style.display = 'block';
+    const px = (X(best.d) / W) * r.width;
+    const w = tip.offsetWidth;
+    tip.style.left = Math.max(0, Math.min(r.width - w, px - w / 2)) + 'px';
+    tip.style.top = Math.max(0, (Y(best.v) / H) * r.height - 54) + 'px';
+  };
+  const leave = () => { tip.style.display = 'none'; xh.style.display = 'none'; dh.style.display = 'none'; };
+  svg.addEventListener('pointermove', move);
+  svg.addEventListener('pointerdown', move);
+  svg.addEventListener('pointerleave', leave);
+}
+
+function render() {
+  const view = document.getElementById('view');
+  document.getElementById('tab-overview').setAttribute('aria-selected', tab === 'overview');
+  document.getElementById('tab-daily').setAttribute('aria-selected', tab === 'daily');
+  if (!history.length) {
+    view.innerHTML = '<div class="empty"><b>עדיין אין נתונים</b>הדשבורד יתמלא אחרי הריצה היומית הראשונה.</div>';
+    return;
+  }
+  view.innerHTML = PLATFORMS.map(tab === 'overview' ? overviewCard : dailyCard).join('');
+  if (tab === 'overview') {
+    PLATFORMS.forEach(drawChart);
+    view.querySelectorAll('select[data-select]').forEach((s) => s.addEventListener('change', () => {
+      chartMetric[s.dataset.select] = s.value;
+      drawChart(PLATFORMS.find((p) => p.id === s.dataset.select));
+    }));
+  }
+}
+
+document.getElementById('tab-overview').addEventListener('click', () => { tab = 'overview'; render(); });
+document.getElementById('tab-daily').addEventListener('click', () => { tab = 'daily'; render(); });
+
+load().then((data) => {
+  history = data.slice().sort((a, b) => a.date.localeCompare(b.date));
+  const last = history[history.length - 1];
+  if (last) document.getElementById('updated').textContent = 'עדכון אחרון: ' + longDate(last.date);
+  render();
+});
+</script>
+</body>
+</html>
