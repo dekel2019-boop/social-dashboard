@@ -187,6 +187,7 @@ td.d.up { color: var(--up); }
 td.d.down { color: var(--down); }
 td.d.flat { color: var(--muted); font-weight: 400; }
 
+.callout { background: var(--flat-bg); border-radius: 10px; padding: 10px 14px; color: var(--ink-2); font-size: 14px; }
 .view-title { margin: 0 0 14px; font-size: 18px; font-weight: 700; }
 .view-title span { font-weight: 400; font-size: 14px; color: var(--muted); margin-inline-start: 8px; }
 .note { color: var(--muted); font-size: 14px; padding: 8px 0; }
@@ -423,13 +424,13 @@ function dailyCard(p) {
   const cur = rows[rows.length - 1];
   const base = baselineRow(rows, cur, P.days);
   const missing = P.days - (dayNum(cur.date) - dayNum(rows[0].date));
-  const waiting = `<span class="pill wait">יוצג אחרי עוד ${daysText(missing)}</span>`;
+  const availDate = new Date((dayNum(cur.date) + missing) * DAY).toISOString().slice(0, 10);
   const tiles = metrics.map(([k, label, ic]) => `
     <div class="tile"><div class="label">${icon(ic)}${label}</div><div class="value num">${fmt(cur[p.id][k])}</div>
-    ${base ? pill(cur[p.id][k], base[p.id][k], p.neutral.includes(k), P.ago) : waiting}</div>`).join('');
+    ${base ? pill(cur[p.id][k], base[p.id][k], p.neutral.includes(k), P.ago) : ''}</div>`).join('');
   const sub = base
     ? `השוואה: ${longDate(cur.date)} מול ${longDate(base.date)}`
-    : `השינוי ה${P.label} יוצג אחרי ${P.days + 1} ימים של נתונים. יש כרגע ${daysText(dayNum(cur.date) - dayNum(rows[0].date) + 1)}.`;
+    : `השינוי ה${P.label} עוד לא זמין: הוא יופיע ב-${longDate(availDate)} (בעוד ${daysText(missing)}), כשיהיו מספיק נתונים להשוואה. עד אז אלה המספרים הנוכחיים.`;
 
   const buckets = [];
   for (const r of rows) {
@@ -460,7 +461,7 @@ function dailyCard(p) {
     table = `<div class="table-wrap"><table><thead><tr><th>${P.unit}</th>${heads}</tr></thead><tbody>${shown}</tbody></table></div>${more}`;
   }
   return `<section class="panel" ${style}>${panelHead(p)}
-    <p class="sub">${sub}</p>
+    <p class="sub${base ? '' : ' callout'}">${sub}</p>
     <div class="grid">${tiles}</div>
     ${table}
   </section>`;
