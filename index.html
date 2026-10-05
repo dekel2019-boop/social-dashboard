@@ -95,13 +95,14 @@ svg { flex-shrink: 0; }
 
 /* tabs */
 .tabs {
-  display: inline-flex; gap: 4px; padding: 4px; margin-bottom: 20px;
+  display: flex; gap: 4px; padding: 4px; margin-bottom: 20px; max-width: 100%; width: fit-content;
+  overflow-x: auto; scrollbar-width: none;
   background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
 }
 .tabs button {
   font: inherit; font-size: 15px; font-weight: 500; cursor: pointer; min-height: 44px;
   display: inline-flex; align-items: center; gap: 8px;
-  padding: 0 18px; border-radius: 9px; border: 0; background: transparent; color: var(--ink-2);
+  padding: 0 16px; border-radius: 9px; border: 0; flex: 0 0 auto; white-space: nowrap; background: transparent; color: var(--ink-2);
   transition: background-color 160ms ease, color 160ms ease;
 }
 .tabs button:hover { background: var(--surface-2); color: var(--ink); }
@@ -146,7 +147,7 @@ svg { flex-shrink: 0; }
 .pill.down { background: var(--down-bg); color: var(--down); }
 .pill { white-space: nowrap; }
 .pill.wait { white-space: normal; }
-.chg { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
+.chg { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
 .ago { font-size: 12px; color: var(--muted); white-space: nowrap; }
 
 /* chart */
@@ -186,7 +187,8 @@ td.d.up { color: var(--up); }
 td.d.down { color: var(--down); }
 td.d.flat { color: var(--muted); font-weight: 400; }
 
-.periods { margin-bottom: 16px; --pc: var(--brand); }
+.view-title { margin: 0 0 14px; font-size: 18px; font-weight: 700; }
+.view-title span { font-weight: 400; font-size: 14px; color: var(--muted); margin-inline-start: 8px; }
 .note { color: var(--muted); font-size: 14px; padding: 8px 0; }
 .empty { text-align: center; padding: 64px 16px; color: var(--ink-2); }
 .empty b { display: block; font-size: 20px; color: var(--ink); margin-bottom: 6px; }
@@ -200,8 +202,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; padding: 8px 
   .brand p { display: none; }
   .brand h1 { font-size: 16px; white-space: nowrap; }
   .live { font-size: 12px; padding: 4px 10px; }
-  .tabs { display: flex; }
-  .tabs button { flex: 1; justify-content: center; }
+  .tabs { width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
   .panel { animation: none; }
@@ -224,12 +225,21 @@ footer { color: var(--muted); font-size: 12px; text-align: center; padding: 8px 
 </header>
 
 <div class="wrap">
-  <div class="tabs" role="tablist" aria-label="תצוגות">
-    <button role="tab" id="tab-overview" aria-selected="true" aria-controls="view">
+  <div class="tabs" role="tablist" aria-label="תצוגות" id="tablist">
+    <button role="tab" id="tab-overview" data-tab="overview" aria-selected="true" aria-controls="view">
       <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18M18 17V9M13 17V5M8 17v-3"/></svg>סקירה כללית
     </button>
-    <button role="tab" id="tab-daily" aria-selected="false" aria-controls="view">
-      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>שינויים
+    <button role="tab" id="tab-day" data-tab="day" aria-selected="false" aria-controls="view" tabindex="-1">
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 6v6l4 2"/></svg>שינוי יומי
+    </button>
+    <button role="tab" id="tab-week" data-tab="week" aria-selected="false" aria-controls="view" tabindex="-1">
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>שינוי שבועי
+    </button>
+    <button role="tab" id="tab-month" data-tab="month" aria-selected="false" aria-controls="view" tabindex="-1">
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>שינוי חודשי
+    </button>
+    <button role="tab" id="tab-year" data-tab="year" aria-selected="false" aria-controls="view" tabindex="-1">
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 7l-8.5 8.5-5-5L2 17M16 7h6v6"/></svg>שינוי שנתי
     </button>
   </div>
   <main id="view" role="tabpanel" aria-live="polite"></main>
@@ -287,7 +297,9 @@ const shortDate = (d) => d.slice(8, 10) + '/' + d.slice(5, 7);
 const longDate = (d) => d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4);
 
 let history = [];
+const TABS = ['overview', 'day', 'week', 'month', 'year'];
 let tab = 'overview';
+try { const t = localStorage.getItem('tab'); if (TABS.includes(t)) tab = t; } catch (e) { /* storage unavailable */ }
 const chartMetric = {};
 
 const SOURCES = [
@@ -534,17 +546,18 @@ function drawChart(p) {
 
 function render() {
   const view = document.getElementById('view');
-  document.getElementById('tab-overview').setAttribute('aria-selected', tab === 'overview');
-  document.getElementById('tab-daily').setAttribute('aria-selected', tab === 'daily');
+  TABS.forEach((k) => {
+    const b = document.getElementById('tab-' + k);
+    b.setAttribute('aria-selected', String(k === tab));
+    b.tabIndex = k === tab ? 0 : -1;
+  });
+  if (tab !== 'overview') period = tab;
   if (!history.length) {
     view.innerHTML = '<div class="empty"><b>עדיין אין נתונים</b>הדשבורד יתמלא אחרי הריצה היומית הראשונה.</div>';
     return;
   }
-  const selector = tab === 'daily'
-    ? `<div class="chips periods" role="group" aria-label="תקופת השוואה">${Object.entries(PERIODS).map(([k, v]) => `<button class="chip" type="button" data-period="${k}" aria-pressed="${k === period}">${v.label}</button>`).join('')}</div>`
-    : '';
-  view.innerHTML = selector + PLATFORMS.map(tab === 'overview' ? overviewCard : dailyCard).join('');
-  view.querySelectorAll('button[data-period]').forEach((b) => b.addEventListener('click', () => { period = b.dataset.period; render(); }));
+  const title = tab === 'overview' ? '' : `<h2 class="view-title">שינוי ${PERIODS[period].label}<span>${PERIODS[period].cmp}</span></h2>`;
+  view.innerHTML = title + PLATFORMS.map(tab === 'overview' ? overviewCard : dailyCard).join('');
   if (tab === 'overview') {
     PLATFORMS.forEach(drawChart);
     view.querySelectorAll('button[data-chip]').forEach((b) => b.addEventListener('click', () => {
@@ -571,8 +584,23 @@ window.addEventListener('resize', () => {
   rz = setTimeout(() => { if (tab === 'overview') PLATFORMS.forEach(drawChart); }, 150);
 });
 
-document.getElementById('tab-overview').addEventListener('click', () => { tab = 'overview'; render(); });
-document.getElementById('tab-daily').addEventListener('click', () => { tab = 'daily'; render(); });
+function selectTab(k, focus) {
+  tab = k;
+  try { localStorage.setItem('tab', k); } catch (e) { /* storage unavailable */ }
+  render();
+  const b = document.getElementById('tab-' + k);
+  if (focus) b.focus();
+  b.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+}
+TABS.forEach((k) => document.getElementById('tab-' + k).addEventListener('click', () => selectTab(k, false)));
+document.getElementById('tablist').addEventListener('keydown', (ev) => {
+  const i = TABS.indexOf(tab);
+  // the page is right-to-left, so ArrowLeft moves to the next tab
+  const next = ev.key === 'ArrowLeft' ? (i + 1) % TABS.length : ev.key === 'ArrowRight' ? (i + TABS.length - 1) % TABS.length : ev.key === 'Home' ? 0 : ev.key === 'End' ? TABS.length - 1 : -1;
+  if (next < 0) return;
+  ev.preventDefault();
+  selectTab(TABS[next], true);
+});
 
 load().then((data) => {
   history = data.slice().sort((a, b) => a.date.localeCompare(b.date));
