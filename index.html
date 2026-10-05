@@ -149,16 +149,24 @@ let history = [];
 let tab = 'overview';
 const chartMetric = {};
 
+const SOURCES = [
+  { url: REMOTE + '?t=' + Date.now() },
+  { url: 'https://api.github.com/repos/dekel2019-boop/social-dashboard/contents/data/history.json?ref=main&t=' + Date.now(), headers: { Accept: 'application/vnd.github.raw+json' } },
+  { url: 'data/history.json?t=' + Date.now() },
+];
+
+// Reads every source and keeps the one with the most recent data, so a stale copy never hides fresh numbers.
 async function load() {
-  for (const url of [REMOTE, 'data/history.json']) {
+  const results = await Promise.all(SOURCES.map(async (s) => {
     try {
-      const res = await fetch(url + '?t=' + Date.now(), { cache: 'no-store' });
-      if (!res.ok) continue;
+      const res = await fetch(s.url, { cache: 'no-store', headers: s.headers });
+      if (!res.ok) return null;
       const data = await res.json();
-      if (Array.isArray(data)) return data;
-    } catch (e) { /* try next source */ }
-  }
-  return [];
+      return Array.isArray(data) ? data : null;
+    } catch (e) { return null; }
+  }));
+  const lastDate = (d) => (d.length ? d[d.length - 1].date : '');
+  return results.filter(Boolean).sort((a, b) => lastDate(b).localeCompare(lastDate(a)) || b.length - a.length)[0] || [];
 }
 
 function series(pid, key) {
