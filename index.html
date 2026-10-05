@@ -36,6 +36,10 @@
   --shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 6px 20px rgba(30, 64, 175, 0.06);
   --topbar: rgba(255, 255, 255, 0.92);
 }
+:root[data-text="blue"] {
+  --ink: #1d4ed8;
+  --ink-2: #2563eb;
+}
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body {
@@ -75,6 +79,16 @@ svg { flex-shrink: 0; }
   font-size: 13px; color: var(--ink-2);
   background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px;
 }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.toggle {
+  font: inherit; font-size: 13px; cursor: pointer; min-height: 40px; padding: 0 14px;
+  display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+  border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--ink-2);
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+.toggle:hover { border-color: var(--brand); }
+.toggle .sw { width: 14px; height: 14px; border-radius: 50%; background: linear-gradient(90deg, #0f172a 50%, #1d4ed8 50%); border: 1px solid var(--border); }
+.toggle[aria-pressed="true"] { background: var(--flat-bg); border-color: var(--brand); font-weight: 600; }
 .live i { width: 8px; height: 8px; border-radius: 50%; background: var(--up); display: inline-block; }
 
 .wrap { max-width: 1040px; margin: 0 auto; padding: 20px 16px 56px; }
@@ -198,7 +212,10 @@ footer { color: var(--muted); font-size: 12px; text-align: center; padding: 8px 
       <img src="icons/icon.svg" alt="" width="36" height="36">
       <div><h1>דשבורד רשתות חברתיות</h1><p>טיקטוק ופייסבוק במקום אחד</p></div>
     </div>
-    <div class="live" id="updated" hidden><i aria-hidden="true"></i><span></span></div>
+    <div class="actions">
+      <button class="toggle" id="text-toggle" type="button" aria-pressed="false"><span class="sw" aria-hidden="true"></span>טקסט כחול</button>
+      <div class="live" id="updated" hidden><i aria-hidden="true"></i><span></span></div>
+    </div>
   </div>
 </header>
 
@@ -472,6 +489,15 @@ function render() {
     }));
   }
 }
+
+const textToggle = document.getElementById('text-toggle');
+function setTextTheme(blue, save) {
+  if (blue) document.documentElement.dataset.text = 'blue'; else delete document.documentElement.dataset.text;
+  textToggle.setAttribute('aria-pressed', String(blue));
+  if (save) { try { localStorage.setItem('text-theme', blue ? 'blue' : 'black'); } catch (e) { /* storage unavailable */ } }
+}
+try { if (localStorage.getItem('text-theme') === 'blue') setTextTheme(true, false); } catch (e) { /* storage unavailable */ }
+textToggle.addEventListener('click', () => setTextTheme(textToggle.getAttribute('aria-pressed') !== 'true', true));
 
 let rz;
 window.addEventListener('resize', () => {
