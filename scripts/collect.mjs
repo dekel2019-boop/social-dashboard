@@ -6,7 +6,8 @@ import { dirname } from 'node:path';
 
 const FILE = fileURLToPath(new URL('../data/history.json', import.meta.url));
 const TIKTOK_USER = process.env.TIKTOK_USER || 'tiny_hamlazot';
-const { APIFY_TOKEN, FB_PAGE_ID, FB_PAGE_TOKEN } = process.env;
+const { APIFY_TOKEN, FB_PAGE_ID, FB_PAGE_TOKEN, TELEGRAM_BOT_TOKEN } = process.env;
+const TELEGRAM_CHANNEL = (process.env.TELEGRAM_CHANNEL || '').replace(/^(https?:\/\/)?t\.me\/(s\/)?|^@/, '').trim();
 const GRAPH = 'https://graph.facebook.com/v21.0';
 const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem' }).format(new Date());
 
@@ -100,6 +101,42 @@ async function collectFacebook() {
   return clean(out);
 }
 
+// Telegram: followers from the Bot API when a bot token exists (exact), otherwise from the public
+// preview page t.me/s/<channel>, which also gives views of the latest posts.
+const abbr = (s) => {
+  const m = String(s).trim().replace(/,/g, '').match(/^([\d.]+)\s*([KM]?)$/i);
+  if (!m) return null;
+  return Math.round(parseFloat(m[1]) * ({ K: 1e3, M: 1e6 }[m[2].toUpperCase()] || 1));
+};
+
+async function collectTelegram() {
+  const out = {};
+  if (TELEGRAM_BOT_TOKEN) {
+    try {
+      const r = await getJson(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getChatMemberCount?chat_id=@${TELEGRAM_CHANNEL}`);
+      out.followers = num(r?.result);
+    } catch (e) {
+      console.warn(`telegram bot api skipped: ${e.message.replace(TELEGRAM_BOT_TOKEN, '***')}`);
+    }
+  }
+  const res = await fetch(`https://t.me/s/${TELEGRAM_CHANNEL}`, { signal: AbortSignal.timeout(30000) });
+  if (!res.ok) throw new Error(`HTTP ${res.status} from t.me`);
+  const html = await res.text();
+  if (!html.includes('tgme_channel_info')) throw new Error('Telegram channel is not public or does not exist');
+  if (out.followers === undefined) {
+    const sub = html.match(/counter_value">([^<]+)<\/span>\s*<span class="counter_type">subscribers?/i);
+    out.followers = sub ? abbr(sub[1]) : null;
+  }
+  const views = [...html.matchAll(/tgme_widget_message_views">([^<]+)</g)].map((m) => abbr(m[1])).filter((v) => v !== null);
+  if (views.length) {
+    out.posts = views.length;
+    out.views = views.reduce((s, v) => s + v, 0);
+    out.avg_views = Math.round(out.views / views.length);
+  }
+  if (out.followers === null || out.followers === undefined) throw new Error('Could not read Telegram subscribers');
+  return clean(out);
+}
+
 const history = JSON.parse(await readFile(FILE, 'utf8').catch(() => '[]'));
 let record = history.find((r) => r.date === today);
 const isNew = !record;
@@ -108,6 +145,7 @@ if (isNew) record = { date: today };
 const jobs = [
   ['tiktok', APIFY_TOKEN, collectTikTok],
   ['facebook', FB_PAGE_ID && FB_PAGE_TOKEN, collectFacebook],
+  ['telegram', TELEGRAM_CHANNEL, collectTelegram],
 ];
 let failed = false;
 for (const [name, enabled, collect] of jobs) {
