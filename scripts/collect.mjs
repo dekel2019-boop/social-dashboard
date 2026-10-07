@@ -7,7 +7,7 @@ import { dirname } from 'node:path';
 const FILE = fileURLToPath(new URL('../data/history.json', import.meta.url));
 const TIKTOK_USER = process.env.TIKTOK_USER || 'tiny_hamlazot';
 const { APIFY_TOKEN, FB_PAGE_ID, FB_PAGE_TOKEN, TELEGRAM_BOT_TOKEN } = process.env;
-const TELEGRAM_CHANNEL = (process.env.TELEGRAM_CHANNEL || '').replace(/^(https?:\/\/)?t\.me\/(s\/)?|^@/, '').trim();
+const TELEGRAM_CHANNEL = (process.env.TELEGRAM_CHANNEL || 'Tiny_Hamlazot').replace(/^(https?:\/\/)?t\.me\/(s\/)?|^@/, '').trim();
 const GRAPH = 'https://graph.facebook.com/v21.0';
 const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem' }).format(new Date());
 
@@ -127,6 +127,13 @@ async function collectTelegram() {
     const sub = html.match(/counter_value">([^<]+)<\/span>\s*<span class="counter_type">subscribers?/i);
     out.followers = sub ? abbr(sub[1]) : null;
   }
+  const counter = (type) => {
+    const m = html.match(new RegExp(`counter_value">([^<]+)</span>\\s*<span class="counter_type">${type}`, 'i'));
+    return m ? abbr(m[1]) : null;
+  };
+  out.photos = counter('photos?');
+  out.videos = counter('videos?');
+  out.links = counter('links?');
   const views = [...html.matchAll(/tgme_widget_message_views">([^<]+)</g)].map((m) => abbr(m[1])).filter((v) => v !== null);
   if (views.length) {
     out.posts = views.length;
