@@ -30,15 +30,15 @@
  {
   "date": "2026-10-07",
   "tiktok": {
-   "followers": 9205,
+   "followers": 9223,
    "following": 61,
    "likes": 57000,
    "videos": 90,
-   "views": 3029478,
-   "comments": 2539,
+   "views": 3029481,
+   "comments": 2547,
    "shares": 5624,
    "saves": 9613,
-   "updated_at": "2026-10-07T15:24:20.509Z"
+   "updated_at": "2026-10-07T17:18:51.128Z"
   },
   "facebook": {
    "followers": 1284,
@@ -50,7 +50,17 @@
    "post_reactions": 52,
    "post_comments": 1,
    "post_shares": 53,
-   "updated_at": "2026-10-07T15:24:24.427Z"
+   "updated_at": "2026-10-07T17:18:58.207Z"
+  },
+  "telegram": {
+   "followers": 3450,
+   "photos": 677,
+   "videos": 92,
+   "links": 706,
+   "posts": 5,
+   "views": 375,
+   "avg_views": 75,
+   "updated_at": "2026-10-07T17:18:58.861Z"
   }
  }
 ]
