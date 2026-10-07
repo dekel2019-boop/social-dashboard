@@ -34,16 +34,19 @@
    "following": 61,
    "likes": 57000,
    "videos": 90,
-   "views": 3029479,
-   "comments": 2535,
+   "views": 3029478,
+   "comments": 2541,
    "shares": 5624,
    "saves": 9613,
-   "updated_at": "2026-10-07T14:41:25.486Z"
+   "updated_at": "2026-10-07T14:45:45.605Z"
   },
   "facebook": {
    "followers": 1284,
    "fans": 1284,
-   "updated_at": "2026-10-07T14:41:26.879Z"
+   "reach": 22,
+   "views": 37,
+   "engagement": 4,
+   "updated_at": "2026-10-07T14:45:48.465Z"
   }
  }
 ]
