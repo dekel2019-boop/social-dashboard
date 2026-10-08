@@ -90,6 +90,11 @@ svg { flex-shrink: 0; }
 .toggle:hover { border-color: var(--brand); }
 .toggle .sw { width: 14px; height: 14px; border-radius: 50%; background: linear-gradient(90deg, #0f172a 50%, #1d4ed8 50%); border: 1px solid var(--border); }
 .toggle[aria-pressed="true"] { background: var(--flat-bg); border-color: var(--brand); font-weight: 600; }
+.toggle:disabled { opacity: .7; cursor: progress; }
+.toggle:disabled svg { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(-360deg); } }
+.toast { position: fixed; inset-inline: 16px; bottom: 16px; max-width: 520px; margin: 0 auto; z-index: 20; padding: 12px 16px; border-radius: 12px; background: var(--ink); color: #fff; font-size: 14px; box-shadow: var(--shadow); }
+.toast[hidden] { display: none; }
 .live i { width: 8px; height: 8px; border-radius: 50%; background: var(--up); display: inline-block; }
 
 .wrap { max-width: 1040px; margin: 0 auto; padding: 20px 16px 56px; }
@@ -220,6 +225,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; padding: 8px 
       <div><h1>דשבורד רשתות חברתיות</h1><p>טיקטוק, פייסבוק וטלגרם במקום אחד</p></div>
     </div>
     <div class="actions">
+      <button class="toggle" id="refresh-btn" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7M21 3v6h-6"/></svg><span>עדכן עכשיו</span></button>
       <button class="toggle" id="text-toggle" type="button" aria-pressed="false"><span class="sw" aria-hidden="true"></span>טקסט כחול</button>
       <div class="live" id="updated" hidden><i aria-hidden="true"></i><span></span></div>
     </div>
@@ -248,6 +254,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; padding: 8px 
   <footer>הנתונים מתעדכנים אוטומטית כל יום בסביבות 08:00 (שעון ישראל).</footer>
 </div>
 
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 <script>
 const REMOTE = 'https://raw.githubusercontent.com/dekel2019-boop/social-dashboard/main/data/history.json';
 
@@ -613,6 +620,61 @@ document.getElementById('tablist').addEventListener('keydown', (ev) => {
   ev.preventDefault();
   selectTab(TABS[next], true);
 });
+
+// "עדכן עכשיו": triggers the same GitHub Actions workflow that runs every morning, then reloads the data.
+// The access token is typed in by the user and kept only in this browser's localStorage.
+const API = 'https://api.github.com/repos/dekel2019-boop/social-dashboard/actions/workflows/daily.yml';
+const refreshBtn = document.getElementById('refresh-btn');
+const toastEl = document.getElementById('toast');
+let toastTimer;
+function toast(msg, ms) {
+  toastEl.textContent = msg;
+  toastEl.hidden = false;
+  clearTimeout(toastTimer);
+  if (ms) toastTimer = setTimeout(() => { toastEl.hidden = true; }, ms);
+}
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const ghHeaders = (t) => ({ Authorization: 'Bearer ' + t, Accept: 'application/vnd.github+json' });
+
+async function refreshNow() {
+  let token = null;
+  try { token = localStorage.getItem('gh-token'); } catch (e) { /* storage unavailable */ }
+  if (!token) {
+    token = (prompt('כדי להריץ עדכון צריך מפתח גישה מ-GitHub (פעם אחת בלבד, נשמר רק בדפדפן הזה).\n\n1. היכנס ל: github.com/settings/personal-access-tokens/new\n2. Repository access: Only select repositories ← social-dashboard\n3. Permissions ← Actions: Read and write\n4. צור והדבק כאן את המפתח:') || '').trim();
+    if (!token) return;
+  }
+  refreshBtn.disabled = true;
+  try {
+    const startedAt = Date.now() - 60000;
+    toast('מפעיל עדכון...');
+    const res = await fetch(API + '/dispatches', { method: 'POST', headers: ghHeaders(token), body: JSON.stringify({ ref: 'main' }) });
+    if (res.status === 401 || res.status === 403 || res.status === 404) {
+      try { localStorage.removeItem('gh-token'); } catch (e) { /* ignore */ }
+      throw new Error('המפתח לא תקין או שחסרה לו הרשאת Actions. נסה שוב עם מפתח חדש.');
+    }
+    if (!res.ok) throw new Error('GitHub החזיר שגיאה ' + res.status);
+    try { localStorage.setItem('gh-token', token); } catch (e) { /* ignore */ }
+    toast('העדכון רץ, זה לוקח בערך דקה...');
+    for (let i = 0; i < 40; i++) {
+      await sleep(5000);
+      const r = await fetch(API + '/runs?event=workflow_dispatch&per_page=1', { headers: ghHeaders(token) });
+      const run = r.ok ? (await r.json()).workflow_runs?.[0] : null;
+      if (!run || Date.parse(run.created_at) < startedAt || run.status !== 'completed') continue;
+      history = (await load()).sort((a, b) => a.date.localeCompare(b.date));
+      const last = history[history.length - 1];
+      if (last) document.querySelector('#updated span').textContent = 'עדכון אחרון: ' + longDate(last.date);
+      render();
+      toast(run.conclusion === 'success' ? 'הנתונים עודכנו' : 'ההרצה הסתיימה עם שגיאה באחד המקורות. בדוק בלשונית Actions ב-GitHub.', 6000);
+      return;
+    }
+    toast('העדכון עדיין רץ. רענן את הדף בעוד כמה דקות.', 6000);
+  } catch (e) {
+    toast(e.message || 'משהו השתבש', 8000);
+  } finally {
+    refreshBtn.disabled = false;
+  }
+}
+refreshBtn.addEventListener('click', refreshNow);
 
 load().then((data) => {
   history = data.slice().sort((a, b) => a.date.localeCompare(b.date));
