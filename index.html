@@ -250,6 +250,9 @@ footer { color: var(--muted); font-size: 12px; text-align: center; padding: 8px 
     <button role="tab" id="tab-year" data-tab="year" aria-selected="false" aria-controls="view" tabindex="-1">
       <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 7l-8.5 8.5-5-5L2 17M16 7h6v6"/></svg>שינוי שנתי
     </button>
+    <button role="tab" id="tab-all" data-tab="all" aria-selected="false" aria-controls="view" tabindex="-1">
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V4M4 21h16M8 16l4-5 3 3 5-7"/></svg>מתחילת המעקב
+    </button>
   </div>
   <main id="view" role="tabpanel" aria-live="polite"></main>
   <footer>הנתונים מתעדכנים אוטומטית כל יום בסביבות 08:00 (שעון ישראל).</footer>
@@ -317,7 +320,7 @@ const shortDate = (d) => d.slice(8, 10) + '/' + d.slice(5, 7);
 const longDate = (d) => d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4);
 
 let history = [];
-const TABS = ['overview', 'day', 'week', 'month', 'year'];
+const TABS = ['overview', 'day', 'week', 'month', 'year', 'all'];
 let tab = 'overview';
 try { const t = localStorage.getItem('tab'); if (TABS.includes(t)) tab = t; } catch (e) { /* storage unavailable */ }
 const chartMetric = {};
@@ -404,6 +407,7 @@ const PERIODS = {
   week: { days: 7, label: 'שבועי', ago: 'משבוע שעבר', cmp: 'מול לפני שבוע', unit: 'שבוע' },
   month: { days: 30, label: 'חודשי', ago: 'מחודש שעבר', cmp: 'מול לפני 30 יום', unit: 'חודש' },
   year: { days: 365, label: 'שנתי', ago: 'משנה שעברה', cmp: 'מול לפני שנה', unit: 'שנה' },
+  all: { label: 'מתחילת המעקב', ago: 'מתחילת המעקב', cmp: 'מול היום הראשון של המעקב', unit: 'תאריך' },
 };
 let period = 'day';
 const DAY = 86400000;
@@ -441,15 +445,43 @@ function dailyCard(p) {
   }
   const P = PERIODS[period];
   const cur = rows[rows.length - 1];
-  const base = baselineRow(rows, cur, P.days);
-  const missing = P.days - (dayNum(cur.date) - dayNum(rows[0].date));
+  const sinceStart = period === 'all';
+  const base = sinceStart ? (rows.length > 1 ? rows[0] : null) : baselineRow(rows, cur, P.days);
+  const missing = sinceStart ? 0 : P.days - (dayNum(cur.date) - dayNum(rows[0].date));
   const availDate = new Date((dayNum(cur.date) + missing) * DAY).toISOString().slice(0, 10);
   const tiles = metrics.map(([k, label, ic]) => `
     <div class="tile"><div class="label">${icon(ic)}${label}</div><div class="value num">${fmt(cur[p.id][k])}</div>
     ${base ? pill(cur[p.id][k], base[p.id][k], p.neutral.includes(k), P.ago) : ''}</div>`).join('');
   const sub = base
     ? `השוואה: ${longDate(cur.date)} מול ${longDate(base.date)}`
+    : sinceStart ? 'המעקב התחיל היום, אז עדיין אין שינוי להציג. מחר יופיע השינוי הראשון.'
     : `השינוי ה${P.label} עוד לא זמין: הוא יופיע ב-${longDate(availDate)} (בעוד ${daysText(missing)}), כשיהיו מספיק נתונים להשוואה. עד אז אלה המספרים הנוכחיים.`;
+
+  if (sinceStart) {
+    // every day shows the total change since the first record
+    const first = rows[0];
+    const heads = metrics.map(([, label]) => `<th>${label}</th>`).join('');
+    const body = rows.slice(1).map((r) => {
+      const cells = metrics.map(([k]) => {
+        const a = r[p.id][k], b = first[p.id][k];
+        if (typeof a !== 'number' || typeof b !== 'number') return '<td class="d flat num">–</td>';
+        const d = a - b;
+        if (d === 0) return '<td class="d flat num">0</td>';
+        const cls = p.neutral.includes(k) ? 'flat' : d > 0 ? 'up' : 'down';
+        return `<td class="d ${cls} num">${d > 0 ? '+' : '−'}${fmt(Math.abs(d))}</td>`;
+      }).join('');
+      return `<tr><td>${longDate(r.date)}</td>${cells}</tr>`;
+    }).reverse();
+    const more = body.length > 60 ? `<p class="sub" style="margin:8px 0 0">מוצגים 60 הימים האחרונים.</p>` : '';
+    const tbl = body.length
+      ? `<div class="table-wrap"><table><thead><tr><th>תאריך</th>${heads}</tr></thead><tbody>${body.slice(0, 60).join('')}</tbody></table></div>${more}`
+      : '';
+    return `<section class="panel" ${style}>${panelHead(p)}
+    <p class="sub${base ? '' : ' callout'}">${sub}</p>
+    <div class="grid">${tiles}</div>
+    ${tbl}
+  </section>`;
+  }
 
   const buckets = [];
   for (const r of rows) {
