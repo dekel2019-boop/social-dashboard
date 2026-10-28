@@ -627,5 +627,30 @@
    "avg_views": 80,
    "updated_at": "2026-10-27T10:20:49.501Z"
   }
+ },
+ {
+  "date": "2026-10-28",
+  "facebook": {
+   "followers": 1286,
+   "fans": 1286,
+   "reach": 5,
+   "views": 5,
+   "engagement": 0,
+   "posts": 25,
+   "post_reactions": 52,
+   "post_comments": 1,
+   "post_shares": 53,
+   "updated_at": "2026-10-28T11:12:22.371Z"
+  },
+  "telegram": {
+   "followers": 3410,
+   "photos": 793,
+   "videos": 92,
+   "links": 736,
+   "posts": 5,
+   "views": 364,
+   "avg_views": 73,
+   "updated_at": "2026-10-28T11:12:23.039Z"
+  }
  }
 ]
