@@ -949,5 +949,41 @@
    "avg_views": 92,
    "updated_at": "2026-11-08T11:49:42.891Z"
   }
+ },
+ {
+  "date": "2026-11-09",
+  "tiktok": {
+   "followers": 9192,
+   "following": 61,
+   "likes": 57000,
+   "videos": 90,
+   "views": 3031094,
+   "comments": 2523,
+   "shares": 5627,
+   "saves": 9610,
+   "updated_at": "2026-11-09T13:45:27.639Z"
+  },
+  "facebook": {
+   "followers": 1286,
+   "fans": 1286,
+   "reach": 9,
+   "views": 11,
+   "engagement": 2,
+   "posts": 25,
+   "post_reactions": 52,
+   "post_comments": 1,
+   "post_shares": 53,
+   "updated_at": "2026-11-09T13:45:31.728Z"
+  },
+  "telegram": {
+   "followers": 3390,
+   "photos": 897,
+   "videos": 92,
+   "links": 762,
+   "posts": 5,
+   "views": 380,
+   "avg_views": 76,
+   "updated_at": "2026-11-09T13:45:32.359Z"
+  }
  }
 ]
